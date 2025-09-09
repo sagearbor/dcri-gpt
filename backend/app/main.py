@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 from app.core.config import settings
-from app.api.v1 import health
+from app.api.v1 import health, auth, users, chat, usage, feedback, admin, search
+from app.api.v1.endpoints import bots
 
 # Configure logging
 logging.basicConfig(
@@ -32,6 +33,14 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
+app.include_router(bots.router, prefix="/api/v1/bots", tags=["bots"])
+app.include_router(usage.router, prefix="/api/v1", tags=["usage"])
+app.include_router(feedback.router, prefix="/api/v1", tags=["feedback"])
+app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
+app.include_router(search.router, prefix="/api/v1", tags=["search"])
 
 
 @app.on_event("startup")

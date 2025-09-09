@@ -9,12 +9,15 @@ from unittest.mock import patch, MagicMock
 
 # Set test environment variables before importing app
 os.environ["JWT_SECRET_KEY"] = "test-secret-key-for-testing-only-32-characters-long"
-os.environ["DATABASE_URL"] = "sqlite:///./test_dcri_gpt.db"
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["ENVIRONMENT"] = "testing"
 os.environ["DEBUG"] = "true"
 
 from app.main import app
 from app.core.config import Settings
+from app.core.database import SessionLocal, Base, engine
+from app.core.security import create_access_token, get_password_hash
+from app.models.user import User
 
 
 @pytest.fixture(scope="session")
@@ -30,7 +33,7 @@ def test_settings():
     """Override settings for testing."""
     test_settings = Settings(
         JWT_SECRET_KEY="test-secret-key-for-testing-only-32-characters-long",
-        DATABASE_URL="sqlite:///./test_dcri_gpt.db",
+        DATABASE_URL="sqlite:///:memory:",
         ENVIRONMENT="testing",
         DEBUG=True,
         REDIS_URL="redis://localhost:6379/1",
@@ -129,11 +132,95 @@ def sample_chat_message():
     }
 
 
+@pytest.fixture(scope="function")
+def db_session():
+    """Create a database session for testing."""
+    # Create all tables
+    Base.metadata.create_all(bind=engine)
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.rollback()
+        session.close()
+        # Clean up all tables
+        Base.metadata.drop_all(bind=engine)
+
+
 @pytest.fixture(autouse=True)
 def cleanup_test_db():
     """Clean up test database after each test."""
     yield
-    # Remove test database file if it exists
-    test_db_path = "./test_dcri_gpt.db"
-    if os.path.exists(test_db_path):
-        os.remove(test_db_path)
+    # No cleanup needed for in-memory database
+
+
+@pytest.fixture(scope="function")
+def test_user(db_session) -> User:
+    """Create a test user."""
+    user = User(
+        email="testuser@example.com",
+        username="testuser",
+        hashed_password=get_password_hash("testpassword123"),
+        full_name="Test User",
+        is_active=True,
+        is_admin=False
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture(scope="function")
+def test_user2(db_session) -> User:
+    """Create a second test user."""
+    user = User(
+        email="testuser2@example.com",
+        username="testuser2",
+        hashed_password=get_password_hash("testpassword456"),
+        full_name="Test User 2",
+        is_active=True,
+        is_admin=False
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture(scope="function")
+def test_admin_user(db_session) -> User:
+    """Create a test admin user."""
+    user = User(
+        email="admin@example.com",
+        username="admin",
+        hashed_password=get_password_hash("adminpassword123"),
+        full_name="Admin User",
+        is_active=True,
+        is_admin=True
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture(scope="function")
+def normal_user_token_headers(test_user: User) -> dict:
+    """Generate authorization headers for a normal user."""
+    access_token = create_access_token(data={"sub": test_user.username, "user_id": test_user.id})
+    return {"Authorization": f"Bearer {access_token}"}
+
+
+@pytest.fixture(scope="function")
+def second_user_token_headers(test_user2: User) -> dict:
+    """Generate authorization headers for the second user."""
+    access_token = create_access_token(data={"sub": test_user2.username, "user_id": test_user2.id})
+    return {"Authorization": f"Bearer {access_token}"}
+
+
+@pytest.fixture(scope="function")
+def admin_token_headers(test_admin_user: User) -> dict:
+    """Generate authorization headers for an admin user."""
+    access_token = create_access_token(data={"sub": test_admin_user.username, "user_id": test_admin_user.id})
+    return {"Authorization": f"Bearer {access_token}"}

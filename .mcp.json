@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "context7": {
+      "type": "sse",
+      "url": "https://mcp.context7.com/sse",
+      "headers": {
+        "CONTEXT7_API_KEY": "ctx7sk-9b4689f0-0288-4e13-8c03-404ba40b094c"
+      }
+    }
+  }
+}
