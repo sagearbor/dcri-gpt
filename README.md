@@ -81,9 +81,9 @@ The entire local stack (FastAPI server, database, frontend) can be launched with
 docker-compose up --build
 ```
 
-- Backend API will be available at `http://localhost:8000`
+- Backend API will be available at `http://localhost:8220`
   
-- API documentation at `http://localhost:8000/docs`
+- API documentation at `http://localhost:8220/docs`
   
 - Frontend will be available at `http://localhost:5173`
   

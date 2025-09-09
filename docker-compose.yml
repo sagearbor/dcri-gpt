@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dcri-gpt-backend
+    ports:
+      - "8220:8220"
+    volumes:
+      - ./backend:/app
+      - ./backend/dcri_gpt.db:/app/dcri_gpt.db
+      - ./backend/chroma_db:/app/chroma_db
+    environment:
+      - DATABASE_URL=sqlite:///./dcri_gpt.db
+    env_file:
+      - ./backend/.env
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8220 --reload
+    depends_on:
+      - redis
+    networks:
+      - dcri-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: dcri-gpt-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - dcri-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: dcri-gpt-postgres
+    environment:
+      POSTGRES_USER: dcri_user
+      POSTGRES_PASSWORD: dcri_password
+      POSTGRES_DB: dcri_gpt
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dcri-network
+    profiles:
+      - postgres
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dcri-gpt-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8220
+    networks:
+      - dcri-network
+    profiles:
+      - frontend
+
+networks:
+  dcri-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
